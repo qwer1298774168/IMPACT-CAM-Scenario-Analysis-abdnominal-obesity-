@@ -1,0 +1,2169 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-08-26"
+---
+
+
+
+# 1.environment settings ----
+
+```{r setup}
+knitr::opts_knit$set(root.dir = "D:/Obj 3_scenario analysis")
+
+#setwd('D:\\Obj 3_scenario analysis')
+## 调用函数
+source('D:\\Obj 3_scenario analysis\\code\\Function code updated.R')
+require('data.table')
+require('tidyverse')
+set.seed(20240322)
+## 环境参数设置
+settings <- default.settings(ask=F)
+### settings的相关参数设置，参考CAM Model_20230509.R和之前的笔记
+settings$startYear <- 2015; settings$finalYear <- 2050
+settings$USE.CORES <- 1; #调用核数？
+settings$PARALLEL.PACKS <- 25; 
+settings$PARALLEL.PACKSIZE <- 40
+### PSA，共计1000次抽样
+settings$CODE.VER <- 'Scenario_231213'
+settings$INPUTS_VER <- '20221124_from Yuyang'
+```
+
+
+# 2.basic data input
+Load_China: input the basic data and make it ready for model running.
+RunModelMultithrd_China: preject the Markov model, and generated age-,year-,sex-,state-specific numbers of people. This is a relative big data set (10.0GB).
+## main analysis：CI.calendar = 0; FI.calendar ==-4; CVD_calendar = 0
+```{r}
+CVD_calendar.Mortality <- 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\UN2022_update_UI.RDS'#
+mortality_previous <- 0
+res <- Load_china(first.year = 2015,
+                  final.year = 2050,
+                  CI.calendar.effect = 0,
+                  FI.calendar.effect = -4.00,
+                  CVD_calendar = 0, # each cvd
+                  Pre_china = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Prevalence for IMPACT-CAM eight states_20230401_60dementia.RDS',#
+                  method_pre = 'Estimation',# method_pre = 'Beta distribution',
+                  exact_prevalence = T,gen.random.num = 200,
+                  TPs_data = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\CHARLS - Incidence for IMPACT-CAM_20230403_Harm.RDS',#
+                  TP_interval = 2,
+                  Adjust_prop_year = NULL,# Adjust by which year?
+                  Mortality_prop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\prop_CAM_HR_nweight_0317.RDS',#
+                  Mortality_SE = F,
+                  Mortality = CVD_calendar.Mortality,# each cvd
+                  Current_Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS',#
+                  Project.Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS')#
+
+baseline <- RunModelMultithrd_China(model="Baseline",
+                                    inputs=copy(res),
+                                    scenario=NULL,
+                                    scenario.rf=NULL,
+                                    pif.output.file="pif_intermediate_output.csv",
+                                    save.pif.table=T,
+                                    scenario.cont.func=function(X){X-5},
+                                    remove.tps=T,
+                                    settings=settings)
+
+constant_Lag0 <- RunModelMultithrd_China(model="Constant_Lag0",
+                                    inputs=copy(res),
+                                    scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_constant.csv',
+                                    scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                    pif.output.file="pif_intermediate_output.csv",
+                                    save.pif.table=T,
+                                    scenario.cont.func=function(X){X-5},
+                                    remove.tps=T,
+                                    settings=settings)
+
+##  ----
+intervention_Lag0 <- RunModelMultithrd_China(model="Intervened_Lag0",
+                                        inputs=copy(res),
+                                        scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_intervened.csv',
+                                        scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                        pif.output.file="pif_intermediate_output.csv",
+                                        save.pif.table=T,
+                                        scenario.cont.func=function(X){X-5},
+                                        remove.tps=T,
+                                        settings=settings)
+
+##----
+Scenario_analysis_Lag0 <- ConcatenateModels(list(baseline,constant_Lag0))
+Scenario_analysis_Lag0 <- ConcatenateModels(list(Scenario_analysis_Lag0,intervention_Lag0))
+saveRDS(Scenario_analysis_Lag0,'D:\\Obj 3_scenario analysis\\Scenario_analysis_CI0_FI-4_CVD0.RDS')
+rm(constant_Lag0,intervention_Lag0,Scenario_analysis_Lag0)
+gc()
+```
+
+
+
+
+## SA: CI.calendar.effect =2.92; FI.calendar.effect == -4; CVD_calendar = 0
+```{r}
+CVD_calendar.Mortality <- 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\UN2022_update_UI.RDS'#注意路径和文件
+mortality_previous <- 0
+res <- Load_china(first.year = 2015,
+                  final.year = 2050,
+                  CI.calendar.effect = 2.92,
+                  FI.calendar.effect = -4.00,
+                  CVD_calendar = 0, # each cvd，改成0试试
+                  Pre_china = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Prevalence for IMPACT-CAM eight states_20230401_60dementia.RDS',#注意路径和文件
+                  method_pre = 'Estimation',# method_pre = 'Beta distribution',
+                  exact_prevalence = T,gen.random.num = 200,
+                  TPs_data = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\CHARLS - Incidence for IMPACT-CAM_20230403_Harm.RDS',#注意路径和文件
+                  TP_interval = 2,
+                  Adjust_prop_year = NULL,# Adjust by which year?
+                  Mortality_prop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\prop_CAM_HR_nweight_0317.RDS',#注意路径和文件
+                  Mortality_SE = F,
+                  Mortality = CVD_calendar.Mortality,# each cvd
+                  Current_Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS',#注意路径和文件
+                  Project.Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS')#注意路径和文件
+
+baseline_Lag_CI_inc292 <- RunModelMultithrd_China(model="Baseline",
+                                                   inputs=copy(res),
+                                                   scenario=NULL,
+                                                   scenario.rf=NULL,
+                                                   pif.output.file="pif_intermediate_output.csv",
+                                                   save.pif.table=T,
+                                                   scenario.cont.func=function(X){X-5},
+                                                   remove.tps=T,
+                                                   settings=settings)
+
+### CI +2.92% 乐观场景模型 ----
+constant_Lag_CI_inc292 <- RunModelMultithrd_China(model="Constant_Lag_CI_inc292",
+                                                    inputs=copy(res),
+                                                    scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_constant.csv',
+                                                    scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                                    pif.output.file="pif_intermediate_output.csv",
+                                                    save.pif.table=T,
+                                                    scenario.cont.func=function(X){X-5},
+                                                    remove.tps=T,
+                                                    settings=settings)
+
+### CI +2.92% 干预场景模型 ----
+intervention_Lag_CI_inc292 <- RunModelMultithrd_China(model="Intervened_Lag_CI_inc292",
+                                                        inputs=copy(res),
+                                                        scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_intervened.csv',
+                                                        scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                                        pif.output.file="pif_intermediate_output.csv",
+                                                        save.pif.table=T,
+                                                        scenario.cont.func=function(X){X-5},
+                                                        remove.tps=T,
+                                                        settings=settings)
+### CI +2.92% SA结果整合 ----
+Sensitivity_analysis_CI_inc292 <- ConcatenateModels(list(baseline_Lag_CI_inc292,
+                                                         constant_Lag_CI_inc292))
+Sensitivity_analysis_CI_inc292 <- ConcatenateModels(list(Sensitivity_analysis_CI_inc292,
+                                                         intervention_Lag_CI_inc292))
+saveRDS(Sensitivity_analysis_CI_inc292,'D:\\Obj 3_scenario analysis\\Sensitivity_analysis_CI+2.92_FI-4_CVD0.RDS')
+rm(baseline_Lag_CI_inc292,constant_Lag_CI_inc292,intervention_Lag_CI_inc292,Sensitivity_analysis_CI_inc292)
+gc()
+```
+
+## SA: CI.calendar.effect = -1; FI.calendar.effect =-4; CVD_calendar = 0
+```{r}
+CVD_calendar.Mortality <- 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\UN2022_update_UI.RDS'#注意路径和文件
+mortality_previous <- 0
+res <- Load_china(first.year = 2015,
+                  final.year = 2050,
+                  CI.calendar.effect = -1.00,
+                  FI.calendar.effect = -4.00,
+                  CVD_calendar = 0, # each cvd
+                  Pre_china = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Prevalence for IMPACT-CAM eight states_20230401_60dementia.RDS',#注意路径和文件
+                  method_pre = 'Estimation',# method_pre = 'Beta distribution',
+                  exact_prevalence = T,gen.random.num = 200,
+                  TPs_data = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\CHARLS - Incidence for IMPACT-CAM_20230403_Harm.RDS',#注意路径和文件
+                  TP_interval = 2,
+                  Adjust_prop_year = NULL,# Adjust by which year?
+                  Mortality_prop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\prop_CAM_HR_nweight_0317.RDS',#注意路径和文件
+                  Mortality_SE = F,
+                  Mortality = CVD_calendar.Mortality,# each cvd
+                  Current_Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS',#注意路径和文件
+                  Project.Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS')#注意路径和文件
+
+baseline_Lag_CI_inc100 <- RunModelMultithrd_China(model="Baseline",
+                                                   inputs=copy(res),
+                                                   scenario=NULL,
+                                                   scenario.rf=NULL,
+                                                   pif.output.file="pif_intermediate_output.csv",
+                                                   save.pif.table=T,
+                                                   scenario.cont.func=function(X){X-5},
+                                                   remove.tps=T,
+                                                   settings=settings)
+
+### CI -1.00% 乐观场景模型 ----
+constant_Lag_CI_inc100 <- RunModelMultithrd_China(model="Constant_Lag_CI_inc100",
+                                                   inputs=copy(res),
+                                                   scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_constant.csv',
+                                                   scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                                   pif.output.file="pif_intermediate_output.csv",
+                                                   save.pif.table=T,
+                                                   scenario.cont.func=function(X){X-5},
+                                                   remove.tps=T,
+                                                   settings=settings)
+
+### CI -1.00% 干预场景模型 ----
+intervention_Lag_CI_inc100 <- RunModelMultithrd_China(model="Intervened_Lag_CI_inc100",
+                                                       inputs=copy(res),
+                                                       scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_intervened.csv',
+                                                       scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                                       pif.output.file="pif_intermediate_output.csv",
+                                                       save.pif.table=T,
+                                                       scenario.cont.func=function(X){X-5},
+                                                       remove.tps=T,
+                                                       settings=settings)
+### CI -1.00% SA结果整合 ----
+Sensitivity_analysis_CI_inc100 <- ConcatenateModels(list(baseline_Lag_CI_inc100,
+                                                         constant_Lag_CI_inc100))
+Sensitivity_analysis_CI_inc100 <- ConcatenateModels(list(Sensitivity_analysis_CI_inc100,
+                                                         intervention_Lag_CI_inc100))
+saveRDS(Sensitivity_analysis_CI_inc100,'D:\\Obj 3_scenario analysis\\Sensitivity_analysis_CI-1_FI-4_CVD0.RDS')
+rm(baseline_Lag_CI_inc100,constant_Lag_CI_inc100,intervention_Lag_CI_inc100,Sensitivity_analysis_CI_inc100)
+gc()
+```
+
+## SA: CI.calendar = 0; FI.calendar ==-4; CVD_calendar = CVD_calendar.Mortality; CVD_calendar 
+```{r}
+CVD_calendar.Mortality <- 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\UN2022_update_UI.RDS'#注意路径和文件
+res <- Load_china(first.year = 2015,
+                  final.year = 2050,
+                  CI.calendar.effect = 0,
+                  FI.calendar.effect = -4.00,
+                  CVD_calendar = CVD_calendar.Mortality, # each cvd
+                  Pre_china = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Prevalence for IMPACT-CAM eight states_20230401_60dementia.RDS',#注意路径和文件
+                  method_pre = 'Estimation',# method_pre = 'Beta distribution',
+                  exact_prevalence = T,gen.random.num = 200,
+                  TPs_data = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\CHARLS - Incidence for IMPACT-CAM_20230403_Harm.RDS',#注意路径和文件
+                  TP_interval = 2,
+                  Adjust_prop_year = NULL,# Adjust by which year?
+                  Mortality_prop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\prop_CAM_HR_nweight_0317.RDS',#注意路径和文件
+                  Mortality_SE = F,
+                  Mortality = CVD_calendar.Mortality,# each cvd
+                  Current_Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS',#注意路径和文件
+                  Project.Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS')#注意路径和文件
+
+baseline_Lag_CVD_mCVD_0 <- RunModelMultithrd_China(model="Baseline",
+                                                   inputs=copy(res),
+                                                   scenario=NULL,
+                                                   scenario.rf=NULL,
+                                                   pif.output.file="pif_intermediate_output.csv",
+                                                   save.pif.table=T,
+                                                   scenario.cont.func=function(X){X-5},
+                                                   remove.tps=T,
+                                                   settings=settings)
+
+### CVD & CVD mortality calendar effect = 0 乐观场景模型 ----
+constant_Lag_CVD_mCVD_0 <- RunModelMultithrd_China(model="Constant_CVD1",
+                                                    inputs=copy(res),
+                                                    scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_constant.csv',
+                                                    scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                                    pif.output.file="pif_intermediate_output.csv",
+                                                    save.pif.table=T,
+                                                    scenario.cont.func=function(X){X-5},
+                                                    remove.tps=T,
+                                                    settings=settings)
+
+### CVD & CVD mortality calendar effect = 0 干预场景模型 ----
+intervention_Lag_CVD_mCVD_0 <- RunModelMultithrd_China(model="Intervened_CVD1",
+                                                        inputs=copy(res),
+                                                        scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_intervened.csv',
+                                                        scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                                        pif.output.file="pif_intermediate_output.csv",
+                                                        save.pif.table=T,
+                                                        scenario.cont.func=function(X){X-5},
+                                                        remove.tps=T,
+                                                        settings=settings)
+### CVD & CVD mortality calendar effect = 0 SA结果整合 ----
+Sensitivity_analysis_CVD_mCVD_0 <- ConcatenateModels(list(baseline_Lag_CVD_mCVD_0,
+                                                         constant_Lag_CVD_mCVD_0))
+Sensitivity_analysis_CVD_mCVD_0 <- ConcatenateModels(list(Sensitivity_analysis_CVD_mCVD_0,
+                                                         intervention_Lag_CVD_mCVD_0))
+saveRDS(Sensitivity_analysis_CVD_mCVD_0,'D:\\Obj 3_scenario analysis\\Sensitivity_analysis_CI0_FI-4_CVD1.RDS')
+rm(baseline_Lag_CVD_mCVD_0,constant_Lag_CVD_mCVD_0,intervention_Lag_CVD_mCVD_0,Sensitivity_analysis_CVD_mCVD_0)
+gc()
+```
+
+
+## Published IMPACT-CAM model running.
+To generate the published article results.
+The model in this study adjusted the calendar effect (one of the sensitivity analyses of the IMPACT-CAM model) on the basis of the main analysis of the original IMPACT-CAM model.
+Liu Y, Wu Y, Chen Y, Lobanov-Rostovsky S, Liu Y, Zeng M, et al. Projection for dementia burden in China to 2050: a macro-simulation study by scenarios of dementia incidence trends. The Lancet Regional Health – Western Pacific. 2024;50
+```{r}
+CVD_calendar.Mortality <- 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\UN2022_update_UI.RDS'
+res <- Load_china(first.year = 2015,
+                  final.year = 2050,
+                  CI.calendar.effect = 2.92,
+                  FI.calendar.effect = 0,
+                  CVD_calendar = CVD_calendar.Mortality, # each cvd
+                  Pre_china = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Prevalence for IMPACT-CAM eight states_20230401_60dementia.RDS',#注意路径和文件
+                  method_pre = 'Estimation',# method_pre = 'Beta distribution',
+                  exact_prevalence = T,gen.random.num = 200,
+                  TPs_data = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\CHARLS - Incidence for IMPACT-CAM_20230403_Harm.RDS',#注意路径和文件
+                  TP_interval = 2,
+                  Adjust_prop_year = NULL,# Adjust by which year?
+                  Mortality_prop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\prop_CAM_HR_nweight_0317.RDS',
+                  Mortality_SE = F,
+                  Mortality = CVD_calendar.Mortality,# each cvd
+                  Current_Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS',#注意路径和文件
+                  Project.Pop = 'D:\\Obj 3 model Yuyang\\CAM 0511\\R data\\Pop structure (China UN 2022 ref).RDS')#注意路径和文件
+
+baseline_Lag_CVD_mCVD_0 <- RunModelMultithrd_China(model="Baseline",
+                                                   inputs=copy(res),
+                                                   scenario=NULL,
+                                                   scenario.rf=NULL,
+                                                   pif.output.file="pif_intermediate_output.csv",
+                                                   save.pif.table=T,
+                                                   scenario.cont.func=function(X){X-5},
+                                                   remove.tps=T,
+                                                   settings=settings)
+
+### CVD & CVD mortality calendar effect = 0  ----
+constant_Lag_CVD_mCVD_0 <- RunModelMultithrd_China(model="Constant_CVD1",
+                                                    inputs=copy(res),
+                                                    scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_constant.csv',
+                                                    scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                                    pif.output.file="pif_intermediate_output.csv",
+                                                    save.pif.table=T,
+                                                    scenario.cont.func=function(X){X-5},
+                                                    remove.tps=T,
+                                                    settings=settings)
+
+### CVD & CVD mortality calendar effect = 0  ----
+intervention_Lag_CVD_mCVD_0 <- RunModelMultithrd_China(model="Intervened_CVD1",
+                                                        inputs=copy(res),
+                                                        scenario='D:\\Obj 3_scenario analysis\\Prevalence projection result\\AO_intervened.csv',
+                                                        scenario.rf='D:\\Obj 3_scenario analysis\\HR\\AO_Lag0.csv',
+                                                        pif.output.file="pif_intermediate_output.csv",
+                                                        save.pif.table=T,
+                                                        scenario.cont.func=function(X){X-5},
+                                                        remove.tps=T,
+                                                        settings=settings)
+### CVD & CVD mortality calendar effect = 0  ----
+Sensitivity_analysis_CVD_mCVD_0 <- ConcatenateModels(list(baseline_Lag_CVD_mCVD_0,
+                                                         constant_Lag_CVD_mCVD_0))
+Sensitivity_analysis_CVD_mCVD_0 <- ConcatenateModels(list(Sensitivity_analysis_CVD_mCVD_0,
+                                                         intervention_Lag_CVD_mCVD_0))
+saveRDS(Sensitivity_analysis_CVD_mCVD_0,'D:\\Obj 3_scenario analysis\\yuyang_setting.RDS')
+rm(baseline_Lag_CVD_mCVD_0,constant_Lag_CVD_mCVD_0,intervention_Lag_CVD_mCVD_0,Sensitivity_analysis_CVD_mCVD_0)
+gc()
+```
+
+
+
+# 3.Results Collation and Extraction
+In the second step, we obtained detailed data for all years up to 2050 across all scenarios. For each year and each state, we recorded the specific sex- and age-specific data on the population size of each state and the population transitions between states. Given the extremely large volume of data, it is necessary to collate the data at this step to facilitate subsequent output.
+For example, based on the number of individuals in each state, we calculate the prevalence and number of cases for different diseases by specific years or year intervals, and the results are stratified by sex and age group. The functions used are derived from the file "Function code updated.R", which provides all the functions for model operation.
+## main analysis
+
+```{r}
+rm(baseline)
+model_name1 <- c(
+  'Scenario_analysis_CI0_FI-4_CVD0'
+  )
+
+#model <- model_name1
+###  ----
+for (model in model_name1) {
+  RDS <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'.RDS',sep = ''))
+  Prevalence <- Prevalences_china(
+    m = RDS,
+    models = unique(RDS$Model),
+    gender = c("All", "Men", "Women"),
+    ages=list(c(65:100)),
+    years = c(2015:2050),
+    states = c(
+      "Disease free",
+      "CVD",
+      "Dementia",
+      "Any disability",
+      "Total population"
+    ),
+    type = c('cases','prevalence'),
+    ref.scenario = 'No reference',
+    ref.year = 0,
+    ver = "absolute",
+    standard.pop = NA,
+    standardized = 0,
+    output = c('Median','LCL','UCL'),#c("Median", "LCL", "UCL", "Mean", "Deterministic"),
+    settings=settings
+  )
+  saveRDS(Prevalence,paste('D:/Obj 3_scenario analysis/',model,'Prevalence_age_above65.RDS', sep = '_'))
+  rm(Prevalence)
+  gc()
+  
+  Prevalence_50 <- Prevalences_china(
+    m = RDS,
+    models = unique(RDS$Model),
+    gender = c("All", "Men", "Women"),
+    ages=list(c(50:100)),
+    years = c(2015:2050),
+    states = c(
+      "Disease free",
+      "CVD",
+      "Dementia",
+      "Any disability",
+      "Total population"
+    ),
+    type = c('cases','prevalence'),
+    ref.scenario = 'No reference',
+    ref.year = 0,
+    ver = "absolute",
+    standard.pop = NA,
+    standardized = 0,
+    output = c('Median','LCL','UCL'),#c("Median", "LCL", "UCL", "Mean", "Deterministic"),
+    settings=settings
+  )
+  saveRDS(Prevalence_50,paste('D:/Obj 3_scenario analysis/',model,'_Prevalence_age_above50.RDS', sep = ''))
+  rm(Prevalence_50)
+  gc()
+  
+  Prevalence_agrp <- Prevalences_china(
+    m = RDS,
+    models = unique(RDS$Model),
+    gender = c("All", "Men", "Women"),
+    ages=list(c(65:69),c(70:74),c(75:79),c(80:84),c(85:89),c(90:100)),
+    years = c(2015:2050),
+    states = c(
+      "Disease free",
+      "CVD",
+      "Dementia",
+      "Any disability",
+      "Total population"
+    ),
+    type = c('cases','prevalence'),
+    ref.scenario = 'No reference',
+    ref.year = 0,
+    ver = "absolute",
+    standard.pop = NA,
+    standardized = 0,
+    output = c('Median','LCL','UCL'),#c("Median", "LCL", "UCL", "Mean", "Deterministic"),
+    settings=settings
+  )
+  saveRDS(Prevalence_agrp,paste('D:/Obj 3_scenario analysis/',model,'Prevalence_age_above65_agrp.RDS', sep = '_'))
+  rm(Prevalence_agrp)
+  gc()
+  
+  Mortality <- Mortality_China(m=RDS,
+                               gender=c('All',"Men","Women"),
+                               ages=list(c(65:100)),
+                               standard.pop = NA,
+                               disease=c("CVD",'nCVD','Total'),
+                               type=c('mortality','deaths'),
+                               ref.scenario="No reference",
+                               ver="absolute")
+  saveRDS(Mortality,paste('D:/Obj 3_scenario analysis/',model,'_Deaths.RDS', sep = ''))
+  rm(Mortality)
+  gc()
+  
+  Mortality_50 <- Mortality_China(m=RDS,
+                               gender=c('All',"Men","Women"),
+                               ages=list(c(50:100)),
+                               standard.pop = NA,
+                               disease=c("CVD",'nCVD','Total'),
+                               type=c('mortality','deaths'),
+                               ref.scenario="No reference",
+                               ver="absolute")
+  saveRDS(Mortality_50,paste('D:/Obj 3_scenario analysis/',model,'_Deaths_50.RDS', sep = ''))
+  rm(Mortality_50)
+  gc()
+  
+  Mortality_agrp <- Mortality_China(m=RDS,
+                               gender=c('All',"Men","Women"),
+                               ages=list(c(65:69),c(70:74),c(75:79),c(80:84),c(85:89),c(90:100)),
+                               standard.pop = NA,
+                               disease=c("CVD",'nCVD','Total'),
+                               type=c('mortality','deaths'),
+                               ref.scenario="No reference",
+                               ver="absolute")
+  saveRDS(Mortality_agrp,paste('D:/Obj 3_scenario analysis/',model,'Deaths_agrp.RDS', sep = '_'))
+  rm(Mortality_agrp)
+  gc()
+ 
+
+  Changes_100k <- CasesAverted(m=RDS,
+                          gender=c("All","Men","Women"),
+                          states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                   "CVD incident cases","Dementia incident cases",
+                                   "Disability incident cases","Disease free"), #function code row 3458 & 3461
+                          ages=c(65:100),
+                          cumulative=F,
+                          type="per 100K population",
+                          output=c("Median","UCL","LCL"),
+                          settings=default.settings())
+  saveRDS(Changes_100k,paste('D:/Obj 3_scenario analysis/',model,'Changes_100k.RDS', sep = '_'))
+  rm(Changes_100k)
+  gc()
+
+  Changes_100k_agrp <- CasesAverted(m=RDS,
+                          gender=c("All","Men","Women"),
+                          states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                   "CVD incident cases","Dementia incident cases",
+                                   "Disability incident cases","Disease free"), #function code row 3458 & 3461
+                          ages=list(c(65:69),c(70:74),c(75:79),c(80:84),c(85:89),c(90:100)),
+                          cumulative=F,
+                          type="per 100K population",
+                          output=c("Median","UCL","LCL"),
+                          settings=default.settings())
+  saveRDS(Changes_100k_agrp,paste('D:/Obj 3_scenario analysis/',model,'Changes_100k_agrp.RDS', sep = '_'))
+  rm(Changes_100k_agrp)
+  gc()
+
+  Changes_cases <- CasesAverted(m=RDS,
+                               gender=c("All","Men","Women"),
+                               states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                        "CVD incident cases","Dementia incident cases",
+                                        "Disability incident cases","Disease free"),
+                               ages=c(65:100),
+                               cumulative=T,
+                               type="absolute",
+                               output=c("Median","UCL","LCL"),
+                               settings=default.settings())
+  saveRDS(Changes_cases,paste('D:/Obj 3_scenario analysis/',model,'Changes_cases.RDS', sep = '_'))
+  rm(Changes_cases)
+  gc()
+  
+  changes_cases_agrp <- CasesAverted(m=RDS,
+                               gender=c("All","Men","Women"),
+                               states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                        "CVD incident cases","Dementia incident cases",
+                                        "Disability incident cases","Disease free"),
+                               ages=list(c(65:69),c(70:74),c(75:79),c(80:84),c(85:89),c(90:100)),
+                               cumulative=T,
+                               type="absolute",
+                               output=c("Median","UCL","LCL"),
+                               settings=default.settings())
+  saveRDS(changes_cases_agrp,paste('D:/Obj 3_scenario analysis/',model,'Changes_cases_agrp.RDS', sep = '_'))
+  rm(changes_cases_agrp)
+  gc()
+}
+```
+
+## SA：CI+2.92_FI-4_CVD0
+```{r}
+rm(baseline)
+model_name1 <- c(
+  'Sensitivity_analysis_CI+2.92_FI-4_CVD0'
+  )
+### 按年龄看 ----
+for (model in model_name1) {
+  RDS <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'.RDS',sep = ''))
+  Prevalence <- Prevalences_china(
+    m = RDS,
+    models = unique(RDS$Model),
+    gender = c("All", "Men", "Women"),
+    ages=list(c(65:100)),
+    years = c(2015:2050),
+    states = c(
+      "Disease free",
+      "CVD",
+      "Dementia",
+      "Any disability",
+      "Total population"
+    ),
+    type = c('cases','prevalence'),
+    ref.scenario = 'No reference',
+    ref.year = 0,
+    ver = "absolute",
+    standard.pop = NA,
+    standardized = 0,
+    output = c('Median','LCL','UCL'),#c("Median", "LCL", "UCL", "Mean", "Deterministic"),
+    settings=settings
+  )
+  saveRDS(Prevalence,paste('D:/Obj 3_scenario analysis/',model,'Prevalence_age_above65.RDS', sep = '_'))
+  rm(Prevalence)
+  gc()
+  
+  Mortality <- Mortality_China(m=RDS,
+                               gender=c('All',"Men","Women"),
+                               ages=list(c(65:100)),
+                               standard.pop = NA,
+                               disease=c("CVD",'nCVD','Total'),
+                               type=c('mortality','deaths'),
+                               ref.scenario="No reference",
+                               ver="absolute")
+  saveRDS(Mortality,paste('D:/Obj 3_scenario analysis/',model,'Deaths.RDS', sep = '_'))
+  rm(Mortality)
+  gc()
+ 
+
+  Changes_100k <- CasesAverted(m=RDS,
+                          gender=c("All","Men","Women"),
+                          states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                   "CVD incident cases","Dementia incident cases",
+                                   "Disability incident cases","Disease free"), #function code row 3458 & 3461
+                          ages=c(65:100),
+                          cumulative=F,
+                          type="per 100K population",
+                          output=c("Median","UCL","LCL"),
+                          settings=default.settings())
+  saveRDS(Changes_100k,paste('D:/Obj 3_scenario analysis/',model,'Changes_100k.RDS', sep = '_'))
+  rm(Changes_100k)
+  gc()
+
+  Changes_cases <- CasesAverted(m=RDS,
+                               gender=c("All","Men","Women"),
+                               states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                        "CVD incident cases","Dementia incident cases",
+                                        "Disability incident cases","Disease free"),
+                               ages=c(65:100),
+                               cumulative=T,
+                               type="absolute",
+                               output=c("Median","UCL","LCL"),
+                               settings=default.settings())
+  saveRDS(Changes_cases,paste('D:/Obj 3_scenario analysis/',model,'Changes_cases.RDS', sep = '_'))
+  rm(Changes_cases)
+  gc()
+}
+```
+
+
+## SA: CI-1_FI-4_CVD0
+```{r}
+rm(baseline)
+model <- 'Sensitivity_analysis_CI-1_FI-4_CVD0'  
+### 按年龄看 ----
+for (model in model_name1) {
+  RDS <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'.RDS',sep = ''))
+  Prevalence <- Prevalences_china(
+    m = RDS,
+    models = unique(RDS$Model),
+    gender = c("All", "Men", "Women"),
+    ages=list(c(65:100)),
+    years = c(2015:2050),
+    states = c(
+      "Disease free",
+      "CVD",
+      "Dementia",
+      "Any disability",
+      "Total population"
+    ),
+    type = c('cases','prevalence'),
+    ref.scenario = 'No reference',
+    ref.year = 0,
+    ver = "absolute",
+    standard.pop = NA,
+    standardized = 0,
+    output = c('Median','LCL','UCL'),#c("Median", "LCL", "UCL", "Mean", "Deterministic"),
+    settings=settings
+  )
+  saveRDS(Prevalence,paste('D:/Obj 3_scenario analysis/',model,'Prevalence_age_above65.RDS', sep = '_'))
+  rm(Prevalence)
+  gc()
+  
+  Mortality <- Mortality_China(m=RDS,
+                               gender=c('All',"Men","Women"),
+                               ages=list(c(65:100)),
+                               standard.pop = NA,
+                               disease=c("CVD",'nCVD','Total'),
+                               type=c('mortality','deaths'),
+                               ref.scenario="No reference",
+                               ver="absolute")
+  saveRDS(Mortality,paste('D:/Obj 3_scenario analysis/',model,'Deaths.RDS', sep = '_'))
+  rm(Mortality)
+  gc()
+ 
+
+  Changes_100k <- CasesAverted(m=RDS,
+                          gender=c("All","Men","Women"),
+                          states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                   "CVD incident cases","Dementia incident cases",
+                                   "Disability incident cases","Disease free"), #function code row 3458 & 3461
+                          ages=c(65:100),
+                          cumulative=F,
+                          type="per 100K population",
+                          output=c("Median","UCL","LCL"),
+                          settings=default.settings())
+  saveRDS(Changes_100k,paste('D:/Obj 3_scenario analysis/',model,'Changes_100k.RDS', sep = '_'))
+  rm(Changes_100k)
+  gc()
+
+  Changes_cases <- CasesAverted(m=RDS,
+                               gender=c("All","Men","Women"),
+                               states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                        "CVD incident cases","Dementia incident cases",
+                                        "Disability incident cases","Disease free"),
+                               ages=c(65:100),
+                               cumulative=T,
+                               type="absolute",
+                               output=c("Median","UCL","LCL"),
+                               settings=default.settings())
+  saveRDS(Changes_cases,paste('D:/Obj 3_scenario analysis/',model,'Changes_cases.RDS', sep = '_'))
+  rm(Changes_cases)
+  gc()
+}
+```
+## SA: CI0_FI-4_CVD1
+```{r}
+rm(baseline)
+model <- 'Sensitivity_analysis_CI0_FI-4_CVD1'  
+### 按年龄看 ----
+
+  RDS <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'.RDS',sep = ''))
+  Prevalence <- Prevalences_china(
+    m = RDS,
+    models = unique(RDS$Model),
+    gender = c("All", "Men", "Women"),
+    ages=list(c(65:100)),
+    years = c(2015:2050),
+    states = c(
+      "Disease free",
+      "CVD",
+      "Dementia",
+      "Any disability",
+      "Total population"
+    ),
+    type = c('cases','prevalence'),
+    ref.scenario = 'No reference',
+    ref.year = 0,
+    ver = "absolute",
+    standard.pop = NA,
+    standardized = 0,
+    output = c('Median','LCL','UCL'),#c("Median", "LCL", "UCL", "Mean", "Deterministic"),
+    settings=settings
+  )
+  saveRDS(Prevalence,paste('D:/Obj 3_scenario analysis/',model,'Prevalence_age_above65.RDS', sep = '_'))
+  rm(Prevalence)
+  gc()
+  
+  
+  
+  Mortality <- Mortality_China(m=RDS,
+                               gender=c('All',"Men","Women"),
+                               ages=list(c(65:100)),
+                               standard.pop = NA,
+                               disease=c("CVD",'nCVD','Total'),
+                               type=c('mortality','deaths'),
+                               ref.scenario="No reference",
+                               ver="absolute")
+  saveRDS(Mortality,paste('D:/Obj 3_scenario analysis/',model,'Deaths.RDS', sep = '_'))
+  rm(Mortality)
+  gc()
+ 
+
+  Changes_100k <- CasesAverted(m=RDS,
+                          gender=c("All","Men","Women"),
+                          states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                   "CVD incident cases","Dementia incident cases",
+                                   "Disability incident cases","Disease free"), #function code row 3458 & 3461
+                          ages=c(65:100),
+                          cumulative=F,
+                          type="per 100K population",
+                          output=c("Median","UCL","LCL"),
+                          settings=default.settings())
+  saveRDS(Changes_100k,paste('D:/Obj 3_scenario analysis/',model,'Changes_100k.RDS', sep = '_'))
+  rm(Changes_100k)
+  gc()
+
+  Changes_cases <- CasesAverted(m=RDS,
+                               gender=c("All","Men","Women"),
+                               states=c("CVD deaths","Non-CVD deaths","Total deaths",
+                                        "CVD incident cases","Dementia incident cases",
+                                        "Disability incident cases","Disease free"),
+                               ages=c(65:100),
+                               cumulative=T,
+                               type="absolute",
+                               output=c("Median","UCL","LCL"),
+                               settings=default.settings())
+  saveRDS(Changes_cases,paste('D:/Obj 3_scenario analysis/',model,'Changes_cases.RDS', sep = '_'))
+  rm(Changes_cases)
+  gc()
+
+  Changes_LY <- LY.gained(m=RDS, ref.model="Baseline",
+                          models="",gender=c("Men","Women","All"),
+                          ages=c(65:100),
+                          years=c(2015:settings$finalYear),
+                          cumulative=T,
+                          output=c("Median","UCL","LCL"),
+                          settings=default.settings())
+  saveRDS(Changes_LY,paste('D:/Obj 3_scenario analysis/',model,'Changes_LY.RDS', sep = '_'))
+  rm(Changes_LY)
+  gc()
+  
+  life_expectancy <- LE(m=RDS,years=2015:2050,models="", #不同years 2020,2030,2040,2050
+                        gender=c("Men","Women","All"), 
+                        ages=c(65), 
+                        method=2, # output: 1=2?
+                        ref.scenario="No reference",ver='absolute', ref.year=2015, #ref.year: please do not use now?
+                        DFLE_LE_ratio=F,DLE_LE_ratio=F,DemLE_LE_ratio=F,
+                        type=c("LE","LE_healthy"),
+                        output=c("Median","LCL","UCL"))
+  saveRDS(life_expectancy,paste('D:/Obj 3_scenario analysis/',model,'life_expectancy.RDS', sep = '_'))
+  rm(life_expectancy,RDS)
+  gc()
+```
+
+## Published IMPACT-CAM Result
+The published IMPACT-CAM model reported data on individuals aged 50 years and above, as follows:
+```{r}
+rm(baseline)
+model_name1 <- c(
+  'yuyang_setting'
+  )
+
+#model <- model_name1
+### 按年龄看 ----
+for (model in model_name1) {
+  
+  Prevalence_50 <- Prevalences_china(
+    m = RDS,
+    models = unique(RDS$Model),
+    gender = c("All", "Men", "Women"),
+    ages=list(c(50:100)),
+    years = c(2015:2050),
+    states = c(
+      "Disease free",
+      "CVD",
+      "Dementia",
+      "Any disability",
+      "Total population"
+    ),
+    type = c('cases','prevalence'),
+    ref.scenario = 'No reference',
+    ref.year = 0,
+    ver = "absolute",
+    standard.pop = NA,
+    standardized = 0,
+    output = c('Median','LCL','UCL'),#c("Median", "LCL", "UCL", "Mean", "Deterministic"),
+    settings=settings
+  )
+  saveRDS(Prevalence_50,paste('D:/Obj 3_scenario analysis/',model,'_Prevalence_age_above50.RDS', sep = ''))
+  rm(Prevalence_50)
+  gc()
+  Mortality_50 <- Mortality_China(m=RDS,
+                               gender=c('All',"Men","Women"),
+                               ages=list(c(50:100)),
+                               standard.pop = NA,
+                               disease=c("CVD",'nCVD','Total'),
+                               type=c('mortality','deaths'),
+                               ref.scenario="No reference",
+                               ver="absolute")
+  saveRDS(Mortality_50,paste('D:/Obj 3_scenario analysis/',model,'_Deaths_50.RDS', sep = ''))
+  rm(Mortality_50)
+  gc()
+}
+```
+
+# 4. Table and Figure Data Output
+## Main analysis
+### persistent scenario (Table 1&2)
+```{r}
+detach("package:signal", unload = TRUE)
+require("dplyr")
+model_name <- c(
+  'Scenario_analysis_CI0_FI-4_CVD0_'
+  )
+for(model in model_name){
+main_result_baseline_1 <- readRDS(
+  paste('D:/Obj 3_scenario analysis/',model,'_Prevalence_age_above65.RDS',sep = '')
+  ) %>% 
+  filter(#Model == 'Baseline', 
+         State %in% c('Any.disability','CVD','Dementia','Disease.free','Total.population'), 
+         Year %in% c(2020,2030,2040,2050),
+         AgeRange == '65-100') %>% 
+  select(-Model,-Stand,-max.Value,-min.Value) %>% 
+  arrange(Gender,Year,Type) %>% 
+  mutate(Value = case_when(Type == 'cases' ~ paste(sprintf("%0.1f",median.Value/1000000),' (',
+                                                   sprintf("%0.1f",lcl.Value/1000000),', ',
+                                                   sprintf("%0.1f",ucl.Value/1000000),')',
+                                                   sep = ''),
+                           Type == 'prevalence' ~ paste(sprintf("%0.1f",median.Value),' (',
+                                                        sprintf("%0.1f",lcl.Value),', ',
+                                                        sprintf("%0.1f",ucl.Value),')',
+                                                        sep = '')),
+         ID = paste(State,Year,Gender,AgeRange,Type))
+
+### updated 20240608
+main_result_baseline_total_pop <- main_result_baseline_1 %>% 
+  select(State, Year, Gender, Type, median.Value, lcl.Value,ucl.Value, ID)
+main_result_baseline_total_pop <- main_result_baseline_total_pop[!duplicated(main_result_baseline_total_pop$ID),] %>% 
+  filter(State == 'Total.population',
+         Type == 'cases') %>% 
+  select(-Type,-State) %>% 
+  rename(M = median.Value,
+         L = lcl.Value,
+         U = ucl.Value)
+### updated 20240608
+
+main_result_baseline_1 <- dcast(main_result_baseline_1[!duplicated(main_result_baseline_1$ID),],
+                                Gender + Year ~ State + Type,
+                                value.var = 'Value')
+
+main_result_baseline_2 <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Deaths.RDS',sep = '')) %>% 
+  filter(#Model == 'Baseline',
+         Year %in% c(2020,2030,2040,2050),
+         Stand == 'non-standardized') %>% 
+  select(State,Year,Gender,type,median.Value,lcl.Value,ucl.Value) %>% 
+  arrange(Gender,Year,type) %>% 
+  rename(Type=type) %>% 
+  mutate(Value = case_when(Type == 'deaths' ~ paste(sprintf("%0.1f",median.Value/1000000),' (',
+                                                    sprintf("%0.1f",lcl.Value/1000000),', ',
+                                                    sprintf("%0.1f",ucl.Value/1000000),')',
+                                                   sep = ''),
+                           Type == 'mortality' ~ paste(sprintf("%0.1f",median.Value*100),' (',
+                                                       sprintf("%0.1f",lcl.Value*100),', ',
+                                                       sprintf("%0.1f",ucl.Value*100),')',
+                                                        sep = '')),
+         ID = paste(State,Year,Gender,Type))
+main_result_baseline_2 <- dcast(main_result_baseline_2[!duplicated(main_result_baseline_2$ID),],
+                                Gender + Year ~ State + Type,
+                                value.var = 'Value')
+  
+main_result_baseline <- left_join(main_result_baseline_1,
+                                  main_result_baseline_2) %>%
+  arrange(Gender,Year) # Yuntao's table 1
+writexl::write_xlsx(main_result_baseline,paste('D:/Obj 3_scenario analysis/',model,'_main_result_baseline.xlsx',sep = ''))
+}
+#View(main_result_baseline)
+
+
+
+# 50岁以上
+
+model <- 'yuyang_setting_'
+
+main_result_baseline_1 <- readRDS(
+  paste('D:/Obj 3_scenario analysis/',model,'Prevalence_age_above50.RDS',sep = '')
+  ) %>% 
+  filter(#Model == 'Baseline', 
+         State %in% c('Any.disability','CVD','Dementia','Disease.free','Total.population'), 
+         Year %in% c(2020,2030,2040,2050),
+         AgeRange == '50-100') %>% 
+  select(-Model,-Stand,-max.Value,-min.Value) %>% 
+  arrange(Gender,Year,Type) %>% 
+  mutate(Value = case_when(Type == 'cases' ~ paste(sprintf("%0.1f",median.Value/1000000),' (',
+                                                   sprintf("%0.1f",lcl.Value/1000000),', ',
+                                                   sprintf("%0.1f",ucl.Value/1000000),')',
+                                                   sep = ''),
+                           Type == 'prevalence' ~ paste(sprintf("%0.1f",median.Value),' (',
+                                                        sprintf("%0.1f",lcl.Value),', ',
+                                                        sprintf("%0.1f",ucl.Value),')',
+                                                        sep = '')),
+         ID = paste(State,Year,Gender,AgeRange,Type))
+
+### updated 20240608
+main_result_baseline_total_pop <- main_result_baseline_1 %>% 
+  select(State, Year, Gender, Type, median.Value, lcl.Value,ucl.Value, ID)
+main_result_baseline_total_pop <- main_result_baseline_total_pop[!duplicated(main_result_baseline_total_pop$ID),] %>% 
+  filter(State == 'Total.population',
+         Type == 'cases') %>% 
+  select(-Type,-State) %>% 
+  rename(M = median.Value,
+         L = lcl.Value,
+         U = ucl.Value)
+### updated 20240608
+
+main_result_baseline_1 <- dcast(main_result_baseline_1[!duplicated(main_result_baseline_1$ID),],
+                                Gender + Year ~ State + Type,
+                                value.var = 'Value')
+
+main_result_baseline_2 <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'Deaths_50.RDS',sep = '')) %>% 
+  filter(#Model == 'Baseline',
+         Year %in% c(2020,2030,2040,2050),
+         Stand == 'non-standardized') %>% 
+  select(State,Year,Gender,type,median.Value,lcl.Value,ucl.Value) %>% 
+  arrange(Gender,Year,type) %>% 
+  rename(Type=type) %>% 
+  mutate(Value = case_when(Type == 'deaths' ~ paste(sprintf("%0.1f",median.Value/1000000),' (',
+                                                    sprintf("%0.1f",lcl.Value/1000000),', ',
+                                                    sprintf("%0.1f",ucl.Value/1000000),')',
+                                                   sep = ''),
+                           Type == 'mortality' ~ paste(sprintf("%0.1f",median.Value*100),' (',
+                                                       sprintf("%0.1f",lcl.Value*100),', ',
+                                                       sprintf("%0.1f",ucl.Value*100),')',
+                                                        sep = '')),
+         ID = paste(State,Year,Gender,Type))
+main_result_baseline_2 <- dcast(main_result_baseline_2[!duplicated(main_result_baseline_2$ID),],
+                                Gender + Year ~ State + Type,
+                                value.var = 'Value')
+  
+main_result_baseline <- left_join(main_result_baseline_1,
+                                  main_result_baseline_2) %>%
+  arrange(Gender,Year) # Yuntao's table 1
+writexl::write_xlsx(main_result_baseline,paste('D:/Obj 3_scenario analysis/',model,'_main_result_baseline_50.xlsx',sep = ''))
+
+
+
+
+
+#分年龄段分析：基线情况
+for(model in model_name){
+  main_result_baseline_1 <- readRDS(
+  paste('D:/Obj 3_scenario analysis/',model,'_Prevalence_age_above65_agrp.RDS',sep = '')
+  ) %>% 
+  filter(#Model == 'Baseline', 
+         State %in% c('Any.disability','CVD','Dementia','Disease.free','Total.population'), 
+         Year %in% c(2020,2030,2040,2050),
+         Gender == "All"
+         #AgeRange == '65-100'
+         ) %>% 
+  select(-Model,-Stand,-max.Value,-min.Value) %>% 
+  arrange(Gender,Year,Type,AgeRange) %>% 
+  mutate(Value = case_when(Type == 'cases' ~ paste(sprintf("%0.1f",median.Value/1000000),' (',
+                                                   sprintf("%0.1f",lcl.Value/1000000),', ',
+                                                   sprintf("%0.1f",ucl.Value/1000000),')',
+                                                   sep = ''),
+                           Type == 'prevalence' ~ paste(sprintf("%0.1f",median.Value),' (',
+                                                        sprintf("%0.1f",lcl.Value),', ',
+                                                        sprintf("%0.1f",ucl.Value),')',
+                                                        sep = '')),
+         ID = paste(State,Year,Gender,AgeRange,Type))
+  
+  
+  main_result_baseline_total_pop <- main_result_baseline_1 %>% 
+  select(State, Year, Gender, AgeRange, Type, median.Value, lcl.Value,ucl.Value, ID)
+  main_result_baseline_total_pop <- main_result_baseline_total_pop[!duplicated(main_result_baseline_total_pop$ID),]   %>% 
+  filter(State == 'Total.population',
+         Type == 'cases') %>% 
+  select(-Type,-State) %>% 
+  rename(M = median.Value,
+         L = lcl.Value,
+         U = ucl.Value,
+         Age = AgeRange)
+### updated 20240608
+
+main_result_baseline_1 <- dcast(main_result_baseline_1[!duplicated(main_result_baseline_1$ID),],
+                                Year + AgeRange ~ State + Type,
+                                value.var = 'Value')
+
+main_result_baseline_2 <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Deaths_agrp.RDS',sep = '')) %>% 
+  filter(#Model == 'Baseline',
+         Year %in% c(2020,2030,2040,2050),
+         Stand == 'non-standardized',
+         Gender == "All") %>% 
+  select(State,Year,Gender,AgeGrp,type,median.Value,lcl.Value,ucl.Value) %>% 
+  arrange(Gender,Year,type,AgeGrp) %>% 
+  rename(Type=type, AgeRange = AgeGrp) %>% 
+  mutate(Value = case_when(Type == 'deaths' ~ paste(sprintf("%0.1f",median.Value/1000000),' (',
+                                                    sprintf("%0.1f",lcl.Value/1000000),', ',
+                                                    sprintf("%0.1f",ucl.Value/1000000),')',
+                                                   sep = ''),
+                           Type == 'mortality' ~ paste(sprintf("%0.1f",median.Value*100),' (',
+                                                       sprintf("%0.1f",lcl.Value*100),', ',
+                                                       sprintf("%0.1f",ucl.Value*100),')',
+                                                        sep = '')),
+         ID = paste(State,Year,Gender,AgeRange,Type))
+main_result_baseline_2 <- dcast(main_result_baseline_2[!duplicated(main_result_baseline_2$ID),],
+                                 Year+AgeRange ~ State + Type,
+                                value.var = 'Value')
+  
+main_result_baseline <- left_join(main_result_baseline_1,
+                                  main_result_baseline_2) %>%
+  arrange(Year,AgeRange) 
+writexl::write_xlsx(main_result_baseline,paste('D:/Obj 3_scenario analysis/',model,'_main_result_baseline_agrp.xlsx',sep = ''))
+}
+
+```
+
+
+
+### Optimal and improved scenarios (Table S3 &S4)
+```{r}
+
+detach("package:signal", unload = TRUE)
+require("dplyr")
+##总年龄段输出
+model_name <- c(
+  '_Scenario_analysis_CI0_FI-4_CVD0'
+  )
+
+for (model in model_name){
+
+main_result_averted_1 <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Changes_cases.RDS',sep = '')) %>% 
+  filter(State %in% c('Total deaths','CVD deaths','Non-CVD deaths',
+                      'CVD incident cases','Disability incident cases','Dementia incident cases',
+                      "Disease free"),
+         Scenario != 'Baseline',
+         Year %in% c(2020,2030,2040,2050)) %>% 
+  arrange(Gender,Year,State) %>% 
+  mutate(Type = 'cases') %>% 
+  mutate(Value = paste(sprintf("%0.1f",median.Value/1000),' (',
+                       sprintf("%0.1f",lcl.Value/1000),', ',
+                       sprintf("%0.1f",ucl.Value/1000),')',
+                       sep = ''))
+
+### updated 20240608
+main_result_averted_cumu_cases <- main_result_averted_1 %>% 
+  select(State, Year, Gender, Type, Scenario, median.Value, lcl.Value, ucl.Value) %>% 
+  filter(Type == 'cases') %>% 
+  select(-Type) 
+
+main_result_averted_cumu_100k <- full_join(main_result_averted_cumu_cases,
+                                           main_result_baseline_total_pop,
+                                           by = c('Year','Gender')) %>% 
+  mutate(median.Value = median.Value/M*100000,
+         lcl.Value = lcl.Value/L*100000,
+         ucl.Value = ucl.Value/U*100000,
+         Type = 'cumu_per') %>% 
+  select(-M,-L,-U) %>% 
+  mutate(Value = paste(sprintf("%0.1f",median.Value),' (',
+                       sprintf("%0.1f",lcl.Value),', ',
+                       sprintf("%0.1f",ucl.Value),')',
+                       sep = ''))
+  
+main_result_averted_3 <- dcast(main_result_averted_cumu_100k,
+                               Gender + Year ~ State + Type + Scenario,
+                               value.var = 'Value')
+### updated 20240608
+
+main_result_averted_1 <- dcast(main_result_averted_1,
+                               Gender + Year ~ State + Type + Scenario,
+                                value.var = 'Value')
+
+main_result_averted_2 <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Changes_100k.RDS',sep = '')) %>% 
+  filter(State %in% c('Total deaths','CVD deaths','Non-CVD deaths',
+                      'CVD incident cases','Disability incident cases','Dementia incident cases',
+                      "Disease free"),
+         Scenario != 'Baseline',
+         Year %in% c(2020,2030,2040,2050)) %>% 
+  arrange(Gender,Year,State) %>% 
+  mutate(Type = 'per 100k') %>% 
+  mutate(Value = paste(sprintf("%0.1f",median.Value),' (',
+                       sprintf("%0.1f",lcl.Value),', ',
+                       sprintf("%0.1f",ucl.Value),')',
+                       sep = ''))
+
+main_result_averted_2 <- dcast(main_result_averted_2,
+                               Gender + Year ~ State + Type + Scenario,
+                               value.var = 'Value')
+  
+### updated 20240608
+main_result_averted <- left_join(main_result_averted_1,
+                                 main_result_averted_2)
+main_result_averted <- left_join(main_result_averted,
+                                 main_result_averted_3) %>% 
+  arrange(Gender,Year) #merge averted result
+### updated 20240608
+
+writexl::write_xlsx(main_result_averted,paste('D:/Obj 3_scenario analysis/',model,'_main_result_averted_1.xlsx',sep = ""))
+}
+
+
+
+
+#分年龄段分析：非基线情况
+for (model in model_name){
+main_result_averted_1 <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Changes_cases_agrp.RDS',sep = '')) %>% 
+  filter(State %in% c('Total deaths','CVD deaths','Non-CVD deaths',
+                      'CVD incident cases','Disability incident cases','Dementia incident cases',
+                      "Disease free"),
+         Scenario != 'Baseline',
+         Year %in% c(2020,2030,2040,2050),
+         Gender == "All") %>% 
+  arrange(Year,State,AgeRange) %>% 
+  mutate(Type = 'cases') %>% 
+  mutate(Value = paste(sprintf("%0.1f",median.Value/1000),' (',
+                       sprintf("%0.1f",lcl.Value/1000),', ',
+                       sprintf("%0.1f",ucl.Value/1000),')',
+                       sep = ''))
+
+
+main_result_averted_1 <- dcast(main_result_averted_1,
+                              Year+AgeRange ~ State + Type + Scenario,
+                                value.var = 'Value')
+
+main_result_averted_2 <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Changes_100k_agrp.RDS',sep = '')) %>% 
+  filter(State %in% c('Total deaths','CVD deaths','Non-CVD deaths',
+                      'CVD incident cases','Disability incident cases','Dementia incident cases',
+                      "Disease free"),
+         Scenario != 'Baseline',
+         Gender == 'All',
+         Year %in% c(2020,2030,2040,2050)) %>% 
+  arrange(Year,State,AgeRange) %>% 
+  mutate(Type = 'per 100k') %>% 
+  mutate(Value = paste(sprintf("%0.1f",median.Value),' (',
+                       sprintf("%0.1f",lcl.Value),', ',
+                       sprintf("%0.1f",ucl.Value),')',
+                       sep = ''))
+
+main_result_averted_2 <- dcast(main_result_averted_2,
+                               Year+AgeRange ~ State + Type + Scenario,
+                               value.var = 'Value')
+  
+### updated 20240608
+main_result_averted <- left_join(main_result_averted_1,
+                                 main_result_averted_2) %>% 
+  arrange(Year,AgeRange) #merge averted result
+### updated 20240608
+
+writexl::write_xlsx(main_result_averted,paste('D:/Obj 3_scenario analysis/',model,'_main_result_averted_1_agrp.xlsx',sep = ""))
+}
+```
+
+### Figure 2&3 data preparation
+
+Data preparation for Figure 2&3
+```{r}
+model <- "_Scenario_analysis_Lag0_1_CI0_FI0_CVD0"
+main_result_change_cases <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Changes_cases.RDS',sep = '')) %>% 
+  filter(State %in% c('Total deaths','CVD deaths','Non-CVD deaths',
+                      'CVD incident cases','Disability incident cases','Dementia incident cases',
+                      "Disease free"),
+         Scenario != 'Baseline',
+         Year %in% c(2020,2030,2040,2050)) %>% 
+  arrange(Gender,Year,State) %>% 
+  mutate(Type = 'cases') %>% 
+  mutate(Value = paste(sprintf("%0.1f",median.Value/1000),' (',
+                       sprintf("%0.1f",lcl.Value/1000),', ',
+                       sprintf("%0.1f",ucl.Value/1000),')',
+                       sep = ''))
+
+## 率
+main_result_change_100k <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Changes_100k.RDS',sep = '')) %>% 
+  filter(State %in% c('Total deaths','CVD deaths','Non-CVD deaths',
+                      'CVD incident cases','Disability incident cases','Dementia incident cases',
+                      "Disease free"),
+         Scenario != 'Baseline',
+         Year %in% c(2020,2030,2040,2050)) %>% 
+  arrange(Gender,Year,State) %>% 
+  mutate(Type = 'per 100k') %>% 
+  mutate(Value = paste(sprintf("%0.1f",median.Value),' (',
+                       sprintf("%0.1f",lcl.Value),', ',
+                       sprintf("%0.1f",ucl.Value),')',
+                       sep = ''))
+
+data_for_plot <- bind_rows(main_result_change_cases,main_result_change_100k) %>%
+  mutate(
+    Significance = ifelse(
+      (lcl.Value>0&ucl.Value>0)|(lcl.Value<0&ucl.Value<0),1,0
+    )
+  ) %>%
+  select(State,Year,Gender,Scenario,median.Value,Type,Significance)
+
+data_for_plot <- bind_rows(main_result_change_cases,main_result_change_100k) %>%
+  mutate(
+    Significance = ifelse(
+      (lcl.Value>0&ucl.Value>0)|(lcl.Value<0&ucl.Value<0),1,0
+    )
+  ) %>%
+  select(State,Year,Gender,Scenario,median.Value,Type,Significance)
+
+table3_index <- c("Total deaths","CVD deaths","Non-CVD deaths")
+table4_index <- c("CVD incident cases","Disability incident cases","Dementia incident cases")
+sex <- c("All","Men","Women")
+scenarios <- c("Constant_Lag0","Intervened_Lag0")
+data_for_plot <- droplevels(data_for_plot)
+
+data_for_plot <- data_for_plot[,!c("lcl.Value","ucl.Value")]
+
+data_for_plot1 <- dcast(
+  data = data_for_plot,
+  formula = State+Year+Gender+Scenario~Type,
+  value.var = c("median.Value","Significance")
+)
+
+## 死亡负担变化
+data_f2 <- data_for_plot1 %>%
+  filter(
+    State %in% table3_index
+    #Gender %in% gender
+  )%>%
+  rename(
+    Deaths_1000 = median.Value_cases,
+    Mortality_inverse = `median.Value_per 100k`,
+    Sig_Deaths = Significance_cases,
+    Sig_Mortality = `Significance_per 100k`
+  )%>%
+  mutate(
+    Deaths = -Deaths_1000/1000,
+    Mortality = -Mortality_inverse,
+    Scenario = case_when(
+      Scenario == 'Constant_Lag0'~'Constant scenario',
+      Scenario == 'Intervened_Lag0'~'Slowed Growth scenario'
+    ),
+    # State = case_when(
+    #   State == 'Total deaths'~'CVD',
+    #   State == 'Disability incident cases'~'Disability',
+    #   State == 'Dementia incident cases'~'Dementia'
+    # ),
+    # State = factor(State,levels = c("Dementia","Disability","CVD")),
+    star_deaths = ifelse(Sig_Deaths == 1,"*",""),
+    star_mortality = ifelse(Sig_Mortality == 1, "†","")
+  )%>%
+  select(
+    State,Gender,Year,Scenario,Deaths,Mortality,star_deaths,star_mortality
+  )
+
+
+## 疾病负担变化
+data_f1 <- data_for_plot1 %>%
+  filter(
+    State %in% table4_index
+    #Gender %in% gender
+  )%>%
+  rename(
+    Cases_1000 = median.Value_cases,
+    Rate_inverse = `median.Value_per 100k`,
+    Sig_Cases = Significance_cases,
+    Sig_Rate = `Significance_per 100k`
+  )%>%
+  mutate(
+    Cases = -Cases_1000/1000,
+    Rate = -Rate_inverse,
+    Scenario = case_when(
+      Scenario == 'Constant_Lag0'~'Constant scenario',
+      Scenario == 'Intervened_Lag0'~'Slowed Growth scenario'
+    ),
+    State = case_when(
+      State == 'CVD incident cases'~'CVD',
+      State == 'Disability incident cases'~'Disability',
+      State == 'Dementia incident cases'~'Dementia'
+    ),
+    State = factor(State,levels = c("Dementia","Disability","CVD")),
+    star_cases = ifelse(Sig_Cases == 1,"*",""),
+    star_rate = ifelse(Sig_Rate == 1, "†","")
+  )%>%
+  select(
+    State,Gender,Year,Scenario,Cases,Rate,star_cases,star_rate
+  )
+saveRDS(data_f1,"D:/Fishman_ZYJ/obesity/data_for_plot/data_f2.RDS")
+saveRDS(data_f2,"D:/Fishman_ZYJ/obesity/data_for_plot/data_f3.RDS")
+```
+
+### Figure 2
+
+```{r}
+library(ggplot2)
+library(ggtext)
+library(ggthemes)
+# detach("package:signal", unload = TRUE)
+require("dplyr")
+
+data <- readRDS("D:/Fishman_ZYJ/obesity/data_for_plot/data_f2.RDS")%>%
+  mutate(
+    State = case_when(
+      State == 'CVD'~'Cardiovascular  diseases',
+      State == 'Disability'~'Functional  impairment',
+      State == 'Dementia'~'Dementia'
+    )
+    ,State = factor(State, levels = c("Dementia","Functional  impairment","Cardiovascular  diseases"))
+  )
+#dev.off()
+dev.new()
+# 双坐标轴转换系数（保持原比例）
+conversion_factor <- max(abs(data$Cases))/max(abs(data$Rate)) 
+
+nbsp <- "\u00A0"
+
+
+
+# 优化后的绘图代码
+ggplot(data, aes(x = Year)) +
+ 
+  geom_col(
+    aes(y = Cases, fill = Scenario),
+    position = position_dodge2(),  
+    width = 8,                             
+    alpha = 1
+    #color = "white"  
+  ) +
+  
+  geom_line(
+    aes(y = Rate * conversion_factor, color = Scenario),
+    size = 0.8,
+    linetype = "solid",
+    position = position_dodge(width = 7) 
+  ) +
+  
+  scale_y_continuous(
+    name = "Cases changed (thousands)",
+    sec.axis = sec_axis(~./conversion_factor, name = "Cases changed per 1000,000 population")
+  ) + 
+  geom_hline(
+    yintercept = 0, 
+    linetype = "dashed",
+    color = "gray40", 
+    linewidth = 0.6,
+    alpha = 0.8
+    
+  )+
+  geom_text(
+    aes(y = case_when(Cases > 0 ~ Cases +100,Cases <0 ~ Cases-100), label = star_cases, group = Scenario),
+    position = position_dodge(width = 7),
+    size = 7,
+    color = "gray25",family = "serif",
+    fontface = "bold"
+  )+
+  geom_text(
+    aes(y = Rate * conversion_factor * 1.05, label = star_rate, group = Scenario), 
+    position = position_dodge(width = 7), 
+    size = 7,               
+    color = "gray25",family = "serif",
+    
+    fontface = "bold"
+  )+
+  facet_grid(
+    State ~ Gender,
+    switch = "y"
+    
+  )+
+  
+  scale_fill_manual(values = c("deepskyblue4", "lightblue")) +
+  scale_color_manual(values = c("firebrick4", "lightcoral")) +
+
+  scale_x_continuous(
+    breaks = c(2020, 2030, 2040, 2050),
+    expand = expansion(mult = 0.1)  
+  )+guides(
+    fill = guide_legend(
+      title = "Cases changed (thousands)",
+      override.aes = list(
+        linetype = 0,  
+        shape = 22,     
+        color = "black" 
+      ),
+      keywidth = unit(0.4, "cm"),  
+      keyheight = unit(0.4,"cm"),
+      order = 1  
+    ),
+    
+    color = guide_legend(
+      title = "Cases changed per 100,000 population",
+      override.aes = list(
+        linetype = "solid",  
+        size = 1.2,           
+        fill = NA             
+      ),
+      order = 2
+    )
+  )+
+  scale_fill_manual(
+    values = c("deepskyblue4", "lightblue"),
+    labels = c(
+      "Optimal scenario", 
+      "Improved scenario         "
+    )
+  )+
+  scale_color_manual(
+    values = c("firebrick4", "lightcoral"),
+    labels = c(
+      "Optimal scenario", 
+      "Improved scenario"
+    )
+  )+  theme_clean() +  
+  theme(
+    
+    text = element_text(family = "serif"),
+    axis.line = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black"),
+    strip.placement = 'outside',
+    axis.text.y = element_text(margin = margin(r = 5)),
+    axis.text.x = element_text(
+      size = 14,            
+      color = "black",      
+      face = "bold"  
+    ),
+    axis.title.y.left = element_text(                     
+      color = "black", 
+      margin = margin(r = 20),                         
+      hjust = 0.5,                                       
+      vjust = -2,                                        
+      size = 18                                          
+    ),
+    axis.title.y.right = element_text(                    
+      color = "black", 
+      margin = margin(l = 20),                          
+      hjust = 0.5,
+      vjust = 2,                                        
+      size = 18
+    ),
+    axis.title.x = ggtext::element_markdown(
+      angle = 90,
+      color = "black", 
+      margin = margin(r = 15),                           
+      hjust = 0.5,
+      vjust = 2,                                         
+      size = 14
+    ),
+    strip.text.y.left = element_text(
+      angle = 90,       
+      size = 14,       
+      lineheight = 0.8, 
+      hjust = 0.5,     
+      vjust = 0.5      
+    ),
+    strip.text.x = element_textbox(
+      size = 14,
+      color = "black",
+      fill = "white",
+      linetype = 1,
+      padding = margin(4, 4, 4, 4),
+      margin = margin(0, 5, 0, 5),
+      halign = 0.5,
+      width = unit(1,"npc")
+    ),
+    
+    legend.position = "top",
+    legend.key = element_blank(),  
+    legend.background = element_blank(), 
+    legend.spacing.y = unit(6, "cm"), 
+    legend.title = element_text(size = 12, face = "bold") ,
+    plot.caption = element_text(size = 12 , hjust = 0)
+  )
+
+#ggsave("D:/Fishman_ZYJ/obesity/figure2.tiff",dpi = 400,scale = 3,width = 6,height = 3)
+```
+
+### Figure 3
+```{r}
+library(ggplot2)
+library(ggtext)
+library(ggthemes)
+library(stringr)
+# 生成模拟数据
+data <- readRDS("D:/Fishman_ZYJ/obesity/data_for_plot/data_f3.RDS")
+#dev.off()
+dev.new()
+# 双坐标轴转换系数（保持原比例）
+conversion_factor <- max(abs(data$Deaths))/max(abs(data$Mortality)) 
+
+
+
+# 优化后的绘图代码
+ggplot(data, aes(x = Year)) +
+  # 修改1：调整柱状图位置参数实现重叠效果
+  geom_col(
+    aes(y = Deaths, fill = Scenario),
+    position = position_dodge2(),  # 减小横向间距
+    width = 8,                             # 增加柱子宽度
+    alpha = 1
+    #color = "white"  # 添加白色边框增强重叠区分度
+  ) +
+  # 修改2：优化折线图位置对齐
+  geom_line(
+    aes(y = Mortality * conversion_factor, color = Scenario),
+    size = 0.8,
+    linetype = "solid",
+    position = position_dodge(width = 7)  # 保持与柱状图对齐
+  ) +
+  # 双坐标轴设置
+  scale_y_continuous(
+    name = "Deaths changed (thousands)",
+    sec.axis = sec_axis(~./conversion_factor, name = "Deaths changed per 1000,000 population")
+  ) + 
+  geom_hline(
+    yintercept = 0, 
+    linetype = "dashed",
+    color = "gray40", 
+    linewidth = 0.6,
+    alpha = 0.8
+    # 线宽调整参数
+  )+
+  geom_text(
+    aes(y = case_when(Deaths > 0 ~ Deaths +100,Deaths <0 ~ Deaths-100), label = star_deaths, group = Scenario),
+    position = position_dodge(width = 7),
+    size = 7,
+    color = "gray25",
+    family = "serif",
+    fontface = "bold"
+  )+
+  geom_text(
+    aes(y = Mortality * conversion_factor * 1.05, label = star_mortality, group = Scenario), 
+    position = position_dodge(width = 7),  # 与折线对齐
+    size = 7,               
+    color = "gray25",# 区别颜色
+    family = "serif",
+    fontface = "bold"
+  )+
+  facet_grid(
+    State~Gender,
+    switch = "y"
+  )+
+  # 颜色配置保持不变
+  scale_fill_manual(values = c("deepskyblue4", "lightblue")) +
+  scale_color_manual(values = c("firebrick4", "lightcoral")) +
+  # 修改3：坐标轴和背景优化
+  theme_clean() +  
+  theme(
+    text = element_text(family = "serif"),
+    axis.line = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black"),
+    strip.placement = 'outside',
+    axis.text.y = element_text(margin = margin(r = 5)),
+    axis.text.x = element_text(
+      size = 14,            # 字号从默认11增大到14
+      color = "black",      # 字体颜色
+      face = "bold"  
+    ),
+    axis.title.y.left = element_text(                     # 左Y轴标题
+      color = "black", 
+      margin = margin(r = 20),                          # 右侧增加20pt留白
+      hjust = 0.5,                                       # 水平居中
+      vjust = -2,                                        # 垂直向外偏移
+      size = 16                                          # 增大字号
+    ),
+    axis.title.y.right = element_text(                    # 右Y轴标题
+      color = "black", 
+      margin = margin(l = 20),                           # 左侧增加20pt留白
+      hjust = 0.5,
+      vjust = 2,                                         # 垂直向外偏移
+      size = 18
+    ),
+    axis.title.x = element_text(
+      color = "black", 
+      margin = margin(l = 20),                           #
+      hjust = 0.5,
+      vjust = 2,                                         #
+      size = 18
+    ),
+    strip.text.y.left = element_textbox(
+      size = 14,
+      hjust = 0.5,
+      vjust = 0.5,
+      margin = margin(r = 15),
+      orientation = "left-rotated",
+      width  = unit(1, "npc"),
+      padding = margin(5, 2, 5, 2),
+      color = "black",
+      #linetype = 1,
+      halign = 0.5
+    ),
+    strip.text.x = element_textbox(
+      size = 14,
+      color = "black",
+      fill = "white",
+      linetype = 1,
+      padding = margin(4, 4, 4, 4),
+      margin = margin(0, 5, 0, 5),
+      halign = 0.5,
+      width = unit(1,"npc")
+    ),
+    
+    legend.position = "top",
+    legend.key = element_blank(),  # 移除图例键背景
+    legend.background = element_blank(),  # 移除图例背景框
+    legend.spacing.y = unit(6, "cm"),  # 增加图例项垂直间距
+    legend.title = element_text(size = 12, face = "bold") ,
+    plot.caption = element_text(size = 12 , hjust = 0)
+  ) +
+  # 修改4：优化标签间距
+  scale_x_continuous(
+    breaks = c(2020, 2030, 2040, 2050),
+    expand = expansion(mult = 0.1)  # 减少两侧留白
+  )+guides(
+    fill = guide_legend(
+      title = "Deaths changed (thousands)",
+      override.aes = list(
+        linetype = 0,  # 禁用线条显示
+        shape = 22,    # 方形符号
+        color = "black" # 符号边框颜色
+      ),
+      keywidth = unit(0.4, "cm"),  # 符号宽度
+      keyheight = unit(0.4,"cm"),
+      order = 1  # 控制显示顺序
+    ),
+    
+    color = guide_legend(
+      title = "Deaths changed per 100,000 population",
+      override.aes = list(
+        linetype = "solid",  # 强制显示虚线
+        size = 1.2,           # 线条粗细
+        fill = NA             # 禁用填充
+      ),
+      order = 2
+    )
+  )+
+  scale_fill_manual(
+    values = c("deepskyblue4", "lightblue"),
+    labels = c(
+      "Constant scenario", 
+      "Slowed growth scenario         "
+    )
+  )+
+  scale_color_manual(
+    values = c("firebrick4", "lightcoral"),
+    labels = c(
+      "Constant scenario", 
+      "Slowed growth scenario"
+    )
+  )
+```
+
+### Figure S6&S7
+Age aroup
+```{r}
+#结果汇总以方便图片输出
+## 人数
+model <- "_Scenario_analysis_CI0_FI-4_CVD0"
+main_result_change_cases <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Changes_cases_agrp.RDS',sep = '')) %>% 
+  filter(State %in% c('Total deaths','CVD deaths','Non-CVD deaths',
+                      'CVD incident cases','Disability incident cases','Dementia incident cases',
+                      "Disease free"),
+         Scenario != 'Baseline',
+         Year %in% c(2020,2030,2040,2050),
+         Gender == 'All') %>% 
+  arrange(AgeRange,Year,State) %>% 
+  mutate(Type = 'cases') %>% 
+  mutate(Value = paste(sprintf("%0.1f",median.Value/1000),' (',
+                       sprintf("%0.1f",lcl.Value/1000),', ',
+                       sprintf("%0.1f",ucl.Value/1000),')',
+                       sep = ''))
+
+## 率
+main_result_change_100k <- readRDS(paste('D:/Obj 3_scenario analysis/',model,'_Changes_100k_agrp.RDS',sep = '')) %>% 
+  filter(State %in% c('Total deaths','CVD deaths','Non-CVD deaths',
+                      'CVD incident cases','Disability incident cases','Dementia incident cases',
+                      "Disease free"),
+         Scenario != 'Baseline',
+         Year %in% c(2020,2030,2040,2050),
+         Gender == "All")%>% 
+  arrange(AgeRange,Year,State) %>% 
+  mutate(Type = 'per 100k') %>% 
+  mutate(Value = paste(sprintf("%0.1f",median.Value),' (',
+                       sprintf("%0.1f",lcl.Value),', ',
+                       sprintf("%0.1f",ucl.Value),')',
+                       sep = ''))
+
+data_for_plot <- bind_rows(main_result_change_cases,main_result_change_100k) %>%
+  mutate(
+    Significance = ifelse(
+      (lcl.Value>0&ucl.Value>0)|(lcl.Value<0&ucl.Value<0),1,0
+    )
+  ) %>%
+  select(State,Year,AgeRange,Scenario,median.Value,Type,Significance)
+
+
+
+death_index <- c("Total deaths","CVD deaths","Non-CVD deaths")
+incidence_index <- c("CVD incident cases","Disability incident cases","Dementia incident cases")
+
+table3_index <- c("Total deaths","CVD deaths","Non-CVD deaths")
+table4_index <- c("CVD incident cases","Disability incident cases","Dementia incident cases")
+sex <- c("65-69","70-74","75-79")
+scenarios <- c("Constant_Lag0","Intervened_Lag0")
+data_for_plot <- droplevels(data_for_plot)
+
+data_for_plot <- data_for_plot[,!c("lcl.Value","ucl.Value")]
+
+data_for_plot1 <- dcast(
+  data = data_for_plot,
+  formula = State+Year+AgeRange+Scenario~Type,
+  value.var = c("median.Value","Significance")
+)
+
+## 死亡负担变化
+data_fs3_4 <- data_for_plot1 %>%
+  filter(
+    State %in% table3_index
+    #Gender %in% gender
+  )%>%
+  rename(
+    Deaths_1000 = median.Value_cases,
+    Mortality_inverse = `median.Value_per 100k`,
+    Sig_Deaths = Significance_cases,
+    Sig_Mortality = `Significance_per 100k`
+  )%>%
+  mutate(
+    Deaths = -Deaths_1000/1000,
+    Mortality = -Mortality_inverse,
+    Scenario = case_when(
+      Scenario == 'Constant_Lag0'~'Optimal scenario',
+      Scenario == 'Intervened_Lag0'~'Improved scenario'
+    ),
+    AgeRange = case_when(
+      AgeRange == '90-100'~'90+',
+      .default = AgeRange
+    ),
+    star_deaths = ifelse(Sig_Deaths == 1,"*",""),
+    star_mortality = ifelse(Sig_Mortality == 1, "†","")
+  )%>%
+  select(
+    State,AgeRange,Year,Scenario,Deaths,Mortality,star_deaths,star_mortality
+  )
+
+
+## 疾病负担变化
+data_fs1_2 <- data_for_plot1 %>%
+  filter(
+    State %in% table4_index
+    #Gender %in% gender
+  )%>%
+  rename(
+    Cases_1000 = median.Value_cases,
+    Rate_inverse = `median.Value_per 100k`,
+    Sig_Cases = Significance_cases,
+    Sig_Rate = `Significance_per 100k`
+  )%>%
+  mutate(
+    Cases = -Cases_1000/1000,
+    Rate = -Rate_inverse,
+    Scenario = case_when(
+      Scenario == 'Constant_Lag0'~'Optimal scenario',
+      Scenario == 'Intervened_Lag0'~'Improved scenario'
+    ),
+    State = case_when(
+      State == 'CVD incident cases'~'CVD',
+      State == 'Disability incident cases'~'Disability',
+      State == 'Dementia incident cases'~'Dementia'
+    ),
+    AgeRange = case_when(
+      AgeRange == '90-100'~'90+',
+      .default = AgeRange
+    ),
+    State = factor(State,levels = c("Dementia","Disability","CVD")),
+    star_cases = ifelse(Sig_Cases == 1,"*",""),
+    star_rate = ifelse(Sig_Rate == 1, "†","")
+  )%>%
+  select(
+    State,AgeRange,Year,Scenario,Cases,Rate,star_cases,star_rate
+  )
+
+saveRDS(data_fs1_2,"D:/Fishman_ZYJ/obesity/data_for_plot/data_fs1_2.RDS")
+saveRDS(data_fs3_4,"D:/Fishman_ZYJ/obesity/data_for_plot/data_fs3_4.RDS")
+
+
+
+
+library(ggplot2)
+library(dplyr)
+library(scales)
+library(ggtext)
+library(ggthemes)
+
+constant_colors <- colorRampPalette(c("#a6cee3", "#1f78b4", "#08519c"))(7)  # 恒定场景：浅蓝 → 深蓝
+slowed_colors <- colorRampPalette(c("#feedde", "#fd8d3c", "#d94701"))(7)    # 放缓场景：浅橙 → 深橙
+
+data_test2 <- readRDS("D:/Fishman_ZYJ/obesity/data_for_plot/data_fs3_4.RDS")
+
+data_test0 <- data_test2%>%
+  rename(
+    Cases = Deaths,
+    Rate = Mortality,
+    star_cases = star_deaths,
+    star_rate = star_mortality
+  )%>%
+  mutate(
+    AgeRange = factor(AgeRange, levels = c("65-69","70-74","75-79","80-84","85-89","90+")),
+    Year = factor(Year,levels = c(2020,2030,2040,2050)),
+    State = factor(State, levels = c("Total deaths","CVD deaths","Non-CVD deaths")),
+    Scenario = factor(Scenario,levels = c("Optimal scenario","Improved scenario")),
+    group = interaction(AgeRange, Scenario , State),
+    star_rate = ifelse(
+      star_rate=="†","*",""
+    )
+    
+  )
+
+
+data_test <- readRDS("D:/Fishman_ZYJ/obesity/data_for_plot/data_fs1_2.RDS")
+data_test1 <- data_test %>%
+  mutate(
+    AgeRange = factor(AgeRange, levels = c("65-69","70-74","75-79","80-84","85-89","90+")),
+    Year = factor(Year,levels = c(2020,2030,2040,2050)),
+    State = case_when(
+      State == 'CVD' ~ 'CVD',
+      State == 'Dementia'~'Dementia',
+      State == 'Disability'~'FI'
+    ),
+    State = factor(State, levels = c("Dementia","FI","CVD")),
+    Scenario = factor(Scenario,levels = c("Optimal scenario","Improved scenario")),
+    group = interaction(AgeRange, Scenario, State),
+    star_rate = ifelse(
+      star_rate=="†","*",""
+    )
+  )
+
+data_all <- rbind(data_test1,data_test0)
+
+
+plot_agrp <- function(data = data_all, State = c("Dementia","Disability","CVD"), Type = "Cases" , labs = "Diseases cases change (Thousand)"){
+  State_temp <- State
+  Type_temp <- Type
+  if(Type == "Cases"){
+     df_sub <- data %>% filter(State %in% State_temp) %>% 
+       select(c("State","AgeRange","Year","Scenario","Cases","star_cases"))%>%
+       rename(Value = Cases,Star = star_cases)
+  }
+  if(Type == "Rate"){
+    df_sub <- data %>% filter(State %in% State_temp) %>% 
+      select(c("State","AgeRange","Year","Scenario","Rate","star_rate"))%>%
+      rename(Value = Rate, Star = star_rate)
+  }
+  ggplot(df_sub,aes(x = Year, y = Value))+
+    # 柱状图
+    geom_col(aes(fill = AgeRange),
+             position = "dodge",
+             width = 0.7)+
+    # 添加数值标签
+    geom_text(
+      aes(label = Star,  
+          group = AgeRange     ),
+      position = position_dodge(width = 0.7),  # 与柱状图相同的偏移量
+      vjust = 0,         # 标签垂直位置（柱子上方）
+      size = 3,             # 标签字体大小
+      color = "black",      # 标签颜色
+      fontface = "bold"     # 标签粗体显示
+    ) +
+    # 突出显示横轴
+    geom_hline(yintercept= 0, color = "black",linewidth = 1)+
+    #颜色填充
+    scale_fill_manual(
+      values = colorRampPalette(c("#a6cee3", "#1f78b4", "#08519c"))(6) 
+    )+
+    #主题
+    theme_classic()+
+    theme(
+      panel.background = element_rect(fill = "white"),#背景白色
+      legend.position = "top",
+      legend.direction = "horizontal",
+      
+      #y轴风格
+      axis.title.y = element_text(face = "bold", size = 20),  # Y轴标题加粗
+      axis.text.y = element_text(face = "bold", color = "black"),  # Y轴刻度加粗
+      axis.line.y = element_line(color = "black", linewidth = 0.5),  # Y轴线加粗
+      axis.ticks.y = element_line(color = "black", linewidth = 0.5),  # Y轴刻度线加粗
+      #axis.title.y.right = element_text(size = 18),
+      
+      axis.title.x = element_text(face = "bold",size = 20),
+      
+      strip.text.y = element_text(size = 18),
+      
+      strip.text.x = element_text(size = 18),
+      
+      #x轴风格
+      axis.text.x = element_text(face = "bold",size = 18,color = "black"),
+      axis.ticks.x = element_line(color = "black", linewidth = 0.5),
+      
+      panel.grid.major = element_blank(),  # 移除主网格线
+      panel.grid.minor = element_blank(),   # 移除次网格线
+      legend.text = element_text(size = 14),
+      legend.title = element_text(size = 14)
+      
+    )+
+    guides(fill = guide_legend(nrow = 1))+ #图例单行显示
+    facet_grid(Scenario~State)+
+    labs(y = labs)
+  
+}
+
+Diseases <- c("Dementia","FI","CVD")
+Deaths <- c("Total deaths","CVD deaths","Non-CVD deaths")
+# Figure S6
+Diseases_cases_agrp <- plot_agrp(data_all, Diseases,"Cases","Diseases cases change (Thousand)")
+# Figure S7
+Diseases_rate_agrp <- plot_agrp(data_all, Diseases,"Rate","Diseases cases change per 100,000 population")
+
+Deaths_cases_agrp <- plot_agrp(data_all, Deaths,"Cases","Deaths change (Thousand)")
+Deaths_rate_agrp <- plot_agrp(data_all, Deaths,"Rate","Deaths change per 100,000 population")
+
+ggsave("D:/Fishman_ZYJ/obesity/figure_S6.tiff",Diseases_cases_agrp,dpi = 400,scale = 3, width = 6,height = 3)
+ggsave("D:/Fishman_ZYJ/obesity/figure_S7.tiff",Diseases_rate_agrp,dpi = 400,scale = 3, width = 6,height = 3)
+# ggsave("D:/Fishman_ZYJ/obesity/figure_S4.tiff",Deaths_cases_agrp,dpi = 400,scale = 3, width = 6,height = 3)
+# ggsave("D:/Fishman_ZYJ/obesity/figure_S5.tiff",Deaths_rate_agrp,dpi = 400,scale = 3, width = 6,height = 3)
+```
+
+
+## sensitivity analysis 
+
+### data preparation (for figure S8&S9)
+```{r}
+library(stringr)
+SA_setting <- 
+  c('_Scenario_analysis_CI0_FI-4_CVD0_',
+    '_Sensitivity_analysis_CI+2.92_FI-4_CVD0_',
+    '_Sensitivity_analysis_CI-1_FI-4_CVD0_',
+    '_Sensitivity_analysis_CI0_FI-4_CVD1_'
+    )
+SA_outcome <- 
+  c('Changes_100k',
+    'Changes_cases'
+    )
+Mortality <- c('Total deaths','CVD deaths','Non-CVD deaths')
+
+# require(dplyr)
+SA_Changes_100k_data <- data.table()
+SA_Changes_cases_data <- data.table()
+for (setting in SA_setting) {
+  for (outcome in SA_outcome) {
+    SA_data <- readRDS(paste(setting,outcome,'.RDS',sep = ''))
+    if(outcome == 'Changes_100k'){
+      SA_data <- SA_data %>% 
+        dplyr::filter(Year %in% c(2020,2030,2040,2050), 
+                      Gender == 'All', 
+                      Scenario != 'Baseline',
+                      State %in%c(Mortality,'CVD incident cases','Disability incident cases','Dementia incident cases')) %>% 
+        mutate(Setting = setting,
+               Setting = case_when(
+                 str_detect(Setting, "CI\\+2\\.92")   ~ "Dementia incidence: +2.9% annually",
+                 str_detect(Setting, "CI\\-1")       ~ "Dementia incidence: -1.0% annually",
+                 str_detect(Setting, "CVD1")         ~ "CVD incidence: decline aligned with projected CVD mortality trends",
+                 str_detect(Setting, "Scenario_analysis") ~ "main analysis",
+                 .default = Setting
+               ),
+               Scenario = case_when(
+                 Scenario == 'Constant_Lag0'~'Optimal',
+                 Scenario == 'Intervened_Lag0'~'Improved',
+                 Scenario == 'Constant_Lag_CI_inc292'~'Optimal',
+                 Scenario == 'Intervened_Lag_CI_inc292'~'Improved',
+                 Scenario == 'Constant_Lag_CI_inc100'~'Optimal',
+                 Scenario == 'Intervened_Lag_CI_inc100'~'Improved',
+                 Scenario == 'Constant_CVD1'~'Optimal',
+                 Scenario == 'Intervened_CVD1'~'Improved'
+               ),
+               value = -median.Value,
+               ucl = -lcl.Value,
+               lcl = -ucl.Value
+               )%>%
+        select(State,Scenario,Year,value,ucl,lcl,Setting)
+      SA_Changes_100k_data <- bind_rows(SA_Changes_100k_data,SA_data)
+    }
+    if(outcome == 'Changes_cases'){
+      SA_data <- SA_data %>% 
+        dplyr::filter(Year %in% c(2020,2030,2040,2050), 
+                      Gender == 'All', 
+                      Scenario != 'Baseline',
+                      State %in%c(Mortality,'CVD incident cases','Disability incident cases','Dementia incident cases')) %>% 
+        mutate(Setting = setting,
+               Setting = case_when(
+                 str_detect(Setting, "CI\\+2\\.92")   ~ "Dementia incidence: +2.9% annually",
+                 str_detect(Setting, "CI\\-1")       ~ "Dementia incidence: -1.0% annually",
+                 str_detect(Setting, "CVD1")         ~ "CVD incidence: decline aligned with projected CVD mortality trends",
+                 str_detect(Setting, "Scenario_analysis") ~ "main analysis",
+                 .default = Setting
+               ),
+               Scenario = case_when(
+                 Scenario == 'Constant_Lag0'~'Optimal',
+                 Scenario == 'Intervened_Lag0'~'Improved',
+                 Scenario == 'Constant_Lag_CI_inc292'~'Optimal',
+                 Scenario == 'Intervened_Lag_CI_inc292'~'Improved',
+                 Scenario == 'Constant_Lag_CI_inc100'~'Optimal',
+                 Scenario == 'Intervened_Lag_CI_inc100'~'Improved',
+                 Scenario == 'Constant_CVD1'~'Optimal',
+                 Scenario == 'Intervened_CVD1'~'Improved'
+               ),
+               State = case_when(
+                 State == 'CVD incident cases'~'CVD',
+                 State == 'Disability incident cases'~'Disability',
+                 State == 'Dementia incident cases'~'Dementia',
+                 .default = State
+               ),
+               value = -median.Value,
+               ucl = -lcl.Value,
+               lcl = -ucl.Value
+               
+               )%>%
+        select(State,Scenario,Year,value,ucl,lcl,Setting)
+      SA_Changes_cases_data <- bind_rows(SA_Changes_cases_data,SA_data)
+    }
+  }
+}
+
+saveRDS(SA_Changes_100k_data,"SA_Changes_100k_data.RDS")
+saveRDS(SA_Changes_cases_data,"SA_changes_cases_data.RDS")
+```
+
+### Figure S8&S9
+
+```{r}
+library(dplyr)
+library(cowplot)
+data_SA_cases <- SA_Changes_cases_data%>%
+  mutate(
+    State = case_when(
+      State == 'Disability'~"FI",
+      .default = State
+    ),
+    Setting = case_when(
+      Setting == "main analysis"~"Main analysis",
+      Setting == "CVD incidence:  decline aligned with projected CVD mortality trends" ~ "CVD incidence: decline aligned with CVD mortality",
+      .default = Setting
+    ),
+    State = factor(State, levels = c("Dementia","FI","CVD","Total deaths","CVD deaths","Non-CVD deaths")),
+    Setting = factor(Setting, levels = c("Main analysis","Dementia incidence: +2.9% annually","Dementia incidence: -1.0% annually","CVD incidence: decline aligned with CVD mortality"))
+    )
+
+data_SA_rate <- SA_Changes_100k_data%>%
+  mutate(
+    State = case_when(
+      State == 'Disability incident cases'~"FI",
+      State == 'CVD incident cases'~'CVD',
+      State == 'Dementia incident cases'~'Dementia',
+      .default = State
+    ),
+    Setting = case_when(
+      Setting == "main analysis"~"Main analysis",
+      Setting == "CVD incidence:  decline aligned with projected CVD mortality trends" ~ "CVD incidence: decline aligned with CVD mortality",
+      .default = Setting
+    ),
+    State = factor(State, levels = c("Dementia","FI","CVD","Total deaths","CVD deaths","Non-CVD deaths")),
+    Setting = factor(Setting, levels = c("Main analysis","Dementia incidence: +2.9% annually","Dementia incidence: -1.0% annually","CVD incidence: decline aligned with CVD mortality"))
+    )
+
+
+## cases
+SA_plot_cases_Optimal <- ggplot(data_SA_cases %>% dplyr::filter(Scenario == "Optimal"),aes(x = Year, y = value/1000,fill = Setting))+
+  geom_bar(stat = "identity", position="dodge")+
+  geom_errorbar(aes(ymin=lcl/1000, ymax=ucl/1000), position="dodge")+
+  theme_classic() + 
+  scale_x_continuous(name = NULL) + 
+  scale_y_continuous(name = NULL) + 
+  facet_wrap( ~ State,
+             ncol = 3,
+             scales = 'free') +
+  ggtitle('Optimal scenario')+
+  theme(
+    legend.position = 'none',
+    title = element_text(size = 16)
+  )
+
+SA_plot_cases_Improved <- ggplot(data_SA_cases %>% dplyr::filter(Scenario == "Improved"),aes(x = Year, y = value/1000,fill = Setting))+
+  geom_bar(stat = "identity", position="dodge")+
+  geom_errorbar(aes(ymin=lcl/1000, ymax=ucl/1000), position="dodge")+
+  theme_classic() + 
+  scale_x_continuous(name = "Year") + 
+  scale_y_continuous(name = NULL) + 
+  facet_wrap( ~ State,
+             ncol = 3,
+             scales = 'free') +
+  ggtitle('Improved scenario')+
+  labs(fill = "Calendar effect")+
+  theme(
+    legend.position = 'bottom',
+    legend.title = element_text(size = 12),
+    title = element_text(size = 16)
+  )
+
+
+SA_plot_cases <- plot_grid(SA_plot_cases_Optimal,SA_plot_cases_Improved,align = "vh",ncol = 1)
+
+
+
+
+## rate
+SA_plot_rate_Optimal <- ggplot(data_SA_rate %>% dplyr::filter(Scenario == "Optimal"),aes(x = Year, y = value,fill = Setting))+
+  geom_bar(stat = "identity", position="dodge")+
+  geom_errorbar(aes(ymin=lcl, ymax=ucl), position="dodge")+
+  theme_classic() + 
+  scale_x_continuous(name = NULL) + 
+  scale_y_continuous(name = NULL) + 
+  facet_wrap( ~ State,
+             ncol = 3,
+             scales = 'free') +
+  ggtitle('Optimal scenario')+
+  theme(
+    legend.position = 'none',
+    title = element_text(size = 16)
+  )
+
+SA_plot_rate_Improved <- ggplot(data_SA_rate %>% dplyr::filter(Scenario == "Improved"),aes(x = Year, y = value,fill = Setting))+
+  geom_bar(stat = "identity", position="dodge")+
+  geom_errorbar(aes(ymin=lcl, ymax=ucl), position="dodge")+
+  theme_classic() + 
+  scale_x_continuous(name = "Year") + 
+  scale_y_continuous(name = NULL) + 
+  facet_wrap( ~ State,
+             ncol = 3,
+             scales = 'free') +
+  ggtitle('Improved scenario')+
+  labs(fill = "Calendar effect")+
+  theme(
+    legend.position = 'bottom',
+    legend.title = element_text(size = 12),
+    title = element_text(size = 16)
+  )
+
+
+SA_plot_rate <- plot_grid(SA_plot_rate_Optimal,SA_plot_rate_Improved,align = "vh",ncol = 1)
+
+
+
+ggsave("D:/Fishman_ZYJ/obesity/figure_S8_new.tiff",SA_plot_cases,dpi = 400,scale = 1, width = 11,height = 12)
+ggsave("D:/Fishman_ZYJ/obesity/figure_S9_new.tiff",SA_plot_rate,dpi = 400,scale = 1, width = 11,height = 12)
+```

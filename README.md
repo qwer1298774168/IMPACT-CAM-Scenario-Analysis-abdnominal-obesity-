@@ -33,7 +33,7 @@ Prevalence for IMPACT-CAM eight states_20230401_60dementia.RDS: Baseline allocat
 
 CHARLS - Incidence for IMPACT-CAM_20230403_Harm.RDS: Transition probabilities.
 
-prop_BAM_HR_nweight_0317.RDS: Ratio of CVD to non-CVD mortality, used to decompose total mortality in each Markov state into CVD and non-CVD components.
+prop_CAM_HR_nweight_0317.RDS: Ratio of CVD to non-CVD mortality, used to decompose total mortality in each Markov state into CVD and non-CVD components.
 
 Pop structure (China UN 2022 ref).RDS: UN-projected population data for 2015–2050.
 
